@@ -20,7 +20,7 @@ const WrapperStyled = styled.div`
 
 export default function UserInfo() {
   const {
-    user: { displayName, photoURL },
+    user: { displayName,  photoURL },
   } = React.useContext(AuthContext);
   const { clearState } = React.useContext(AppContext);
 

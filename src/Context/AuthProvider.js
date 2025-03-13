@@ -14,16 +14,23 @@ export default function AuthProvider({ children }) {
   useEffect(() => {
     console.log('Đang theo dõi trạng thái xác thực...');
     const unsubscribed = auth.onAuthStateChanged((user) => {
-      console.log('Trạng thái xác thực thay đổi:', user);
+      console.log('Auth State Changed - Full user object:', user);
       
       if (user) {
         const { displayName, email, uid, photoURL } = user;
-        setUser({
+        console.log('User Info trước khi set:', { displayName, email, uid, photoURL });
+        
+        
+        // Đảm bảo photoURL không bị undefined hoặc null
+        const userInfo = {
           displayName,
           email,
           uid,
           photoURL,
-        });
+        };
+        
+        console.log('User Info sau khi xử lý:', userInfo);
+        setUser(userInfo);
         setIsLoading(false);
         console.log('Đã đăng nhập, chuyển hướng đến trang chính');
         

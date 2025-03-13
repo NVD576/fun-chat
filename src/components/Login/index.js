@@ -8,13 +8,16 @@ const { Title } = Typography;
 export default function Login() {
   const handleLogin = async (provider) => {
     try {
-      console.log('Đang đăng nhập với provider:', provider);
+      console.log('Bắt đầu đăng nhập với provider:', provider);
       
-      // Sử dụng signInWithPopup thay vì signInWithRedirect
       const result = await auth.signInWithPopup(provider);
-      console.log('Kết quả đăng nhập:', result);
+      console.log('Thông tin đăng nhập:', {
+        displayName: result.user.displayName,
+        email: result.user.email,
+        photoURL: result.user.photoURL,
+        providerId: result.additionalUserInfo.providerId
+      });
       
-      // Xử lý người dùng mới
       const { additionalUserInfo, user } = result;
       if (additionalUserInfo?.isNewUser) {
         // Nếu là người dùng mới, thêm vào Firestore

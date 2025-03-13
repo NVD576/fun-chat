@@ -1,12 +1,13 @@
-import { UserAddOutlined } from '@ant-design/icons';
+import { UserAddOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import React, { useContext, useEffect, useRef, useState } from 'react';
 import styled from 'styled-components';
-import { Button, Tooltip, Avatar, Form, Input, Alert } from 'antd';
+import { Button, Tooltip, Avatar, Form, Input, Alert, Dropdown, Modal, Menu, message } from 'antd';
 import Message from './Message';
 import { AppContext } from '../../Context/AppProvider';
 import { addDocument } from '../../firebase/services';
 import { AuthContext } from '../../Context/AuthProvider';
 import useFirestore from '../../hooks/useFirestore';
+import { db } from '../../firebase/config';
 
 const HeaderStyled = styled.div`
   display: flex;
@@ -26,6 +27,11 @@ const HeaderStyled = styled.div`
     &__title {
       margin: 0;
       font-weight: bold;
+      cursor: pointer;
+
+      &:hover {
+        opacity: 0.8;
+      }
     }
 
     &__description {
@@ -71,7 +77,7 @@ const MessageListStyled = styled.div`
 `;
 
 export default function ChatWindow() {
-  const { selectedRoom, members, setIsInviteMemberVisible } =
+  const { selectedRoom, members, setIsInviteMemberVisible, setSelectedRoomId } =
     useContext(AppContext);
   const {
     user: { uid, photoURL, displayName },
@@ -80,6 +86,9 @@ export default function ChatWindow() {
   const [form] = Form.useForm();
   const inputRef = useRef(null);
   const messageListRef = useRef(null);
+  const [isRenameModalVisible, setIsRenameModalVisible] = useState(false);
+  const [newRoomName, setNewRoomName] = useState('');
+  const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
 
   const handleInputChange = (e) => {
     setInputValue(e.target.value);
@@ -123,13 +132,80 @@ export default function ChatWindow() {
     }
   }, [messages]);
 
+  const handleRenameRoom = () => {
+    if (newRoomName.trim() === '') {
+      message.error('Tên phòng không được để trống');
+      return;
+    }
+
+    console.log('Đang đổi tên phòng:', selectedRoom.id, 'thành', newRoomName.trim());
+    
+    const roomRef = db.collection('rooms').doc(selectedRoom.id);
+    
+    roomRef.update({
+      name: newRoomName.trim()
+    })
+    .then(() => {
+      console.log('Đổi tên phòng thành công');
+      message.success('Đổi tên phòng thành công');
+      setNewRoomName('');
+      setIsRenameModalVisible(false);
+    })
+    .catch((error) => {
+      console.error('Lỗi khi đổi tên phòng:', error);
+      message.error('Đổi tên phòng thất bại: ' + error.message);
+    });
+  };
+
+  const handleDeleteRoom = () => {
+    console.log('Đang xóa phòng:', selectedRoom.id);
+    
+    const roomRef = db.collection('rooms').doc(selectedRoom.id);
+    
+    roomRef.delete()
+    .then(() => {
+      console.log('Xóa phòng thành công');
+      message.success('Xóa phòng thành công');
+      setIsDeleteModalVisible(false);
+      setSelectedRoomId('');
+    })
+    .catch((error) => {
+      console.error('Lỗi khi xóa phòng:', error);
+      message.error('Xóa phòng thất bại: ' + error.message);
+    });
+  };
+
+  const handleMenuClick = (e) => {
+    if (e.key === '1') {
+      setNewRoomName(selectedRoom.name);
+      setIsRenameModalVisible(true);
+    } else if (e.key === '2') {
+      setIsDeleteModalVisible(true);
+    }
+  };
+
+  const menu = (
+    <Menu onClick={handleMenuClick}>
+      <Menu.Item key="1" icon={<EditOutlined />}>
+        Đổi tên nhóm
+      </Menu.Item>
+      <Menu.Item key="2" icon={<DeleteOutlined />} danger>
+        Xóa nhóm
+      </Menu.Item>
+    </Menu>
+  );
+
   return (
     <WrapperStyled>
       {selectedRoom.id ? (
         <>
           <HeaderStyled>
             <div className='header__info'>
-              <p className='header__title'>{selectedRoom.name}</p>
+              <Dropdown overlay={menu} trigger={['click']}>
+                <Button type="text" className='header__title' style={{ padding: 0, margin: 0, height: 'auto' }}>
+                  {selectedRoom.name}
+                </Button>
+              </Dropdown>
               <span className='header__description'>
                 {selectedRoom.description}
               </span>
@@ -183,6 +259,31 @@ export default function ChatWindow() {
               </Button>
             </FormStyled>
           </ContentStyled>
+          <Modal
+            title="Đổi tên nhóm"
+            visible={isRenameModalVisible}
+            onOk={handleRenameRoom}
+            onCancel={() => setIsRenameModalVisible(false)}
+          >
+            <Input
+              value={newRoomName}
+              onChange={(e) => setNewRoomName(e.target.value)}
+              placeholder="Nhập tên mới cho nhóm"
+              onPressEnter={handleRenameRoom}
+              autoFocus
+            />
+          </Modal>
+          <Modal
+            title="Xóa nhóm"
+            visible={isDeleteModalVisible}
+            onOk={handleDeleteRoom}
+            onCancel={() => setIsDeleteModalVisible(false)}
+            okText="Xóa"
+            cancelText="Hủy"
+            okButtonProps={{ danger: true }}
+          >
+            <p>Bạn có chắc chắn muốn xóa nhóm này không?</p>
+          </Modal>
         </>
       ) : (
         <Alert

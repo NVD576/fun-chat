@@ -30,12 +30,16 @@ firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL)
 
 // Cấu hình cho Google Provider
 const googleProvider = new firebase.auth.GoogleAuthProvider();
+googleProvider.addScope('profile');
+googleProvider.addScope('email');
 googleProvider.setCustomParameters({
   prompt: 'select_account'
 });
 
 // Cấu hình cho Facebook Provider
 const fbProvider = new firebase.auth.FacebookAuthProvider();
+fbProvider.addScope('public_profile');
+fbProvider.addScope('email');
 
 const auth = firebase.auth();
 const db = firebase.firestore();
