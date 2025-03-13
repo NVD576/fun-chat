@@ -12,14 +12,28 @@ export default function AddRoomModal() {
   const [form] = Form.useForm();
 
   const handleOk = () => {
-    // handle logic
-    // add new room to firestore
-    addDocument('rooms', { ...form.getFieldsValue(), members: [uid] });
-
-    // reset form value
-    form.resetFields();
-
-    setIsAddRoomVisible(false);
+    // Validate form trước khi thêm phòng mới
+    form.validateFields()
+      .then(values => {
+        // Đảm bảo không có giá trị undefined
+        const roomData = {
+          name: values.name || '',
+          description: values.description || '',
+          members: [uid]
+        };
+        
+        // Thêm phòng mới vào firestore
+        addDocument('rooms', roomData);
+        
+        // Reset form
+        form.resetFields();
+        
+        // Đóng modal
+        setIsAddRoomVisible(false);
+      })
+      .catch(info => {
+        console.log('Validate Failed:', info);
+      });
   };
 
   const handleCancel = () => {

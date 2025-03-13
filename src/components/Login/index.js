@@ -1,26 +1,36 @@
 import React from 'react';
 import { Row, Col, Button, Typography } from 'antd';
-import firebase, { auth } from '../../firebase/config';
+import { auth, googleProvider, fbProvider } from '../../firebase/config';
 import { addDocument, generateKeywords } from '../../firebase/services';
 
 const { Title } = Typography;
 
-const fbProvider = new firebase.auth.FacebookAuthProvider();
-const googleProvider = new firebase.auth.GoogleAuthProvider();
-
 export default function Login() {
   const handleLogin = async (provider) => {
-    const { additionalUserInfo, user } = await auth.signInWithPopup(provider);
-
-    if (additionalUserInfo?.isNewUser) {
-      addDocument('users', {
-        displayName: user.displayName,
-        email: user.email,
-        photoURL: user.photoURL,
-        uid: user.uid,
-        providerId: additionalUserInfo.providerId,
-        keywords: generateKeywords(user.displayName?.toLowerCase()),
-      });
+    try {
+      console.log('Đang đăng nhập với provider:', provider);
+      
+      // Sử dụng signInWithPopup thay vì signInWithRedirect
+      const result = await auth.signInWithPopup(provider);
+      console.log('Kết quả đăng nhập:', result);
+      
+      // Xử lý người dùng mới
+      const { additionalUserInfo, user } = result;
+      if (additionalUserInfo?.isNewUser) {
+        // Nếu là người dùng mới, thêm vào Firestore
+        console.log('Thêm người dùng mới vào Firestore');
+        addDocument('users', {
+          displayName: user.displayName,
+          email: user.email,
+          photoURL: user.photoURL,
+          uid: user.uid,
+          providerId: additionalUserInfo.providerId,
+          keywords: generateKeywords(user.displayName?.toLowerCase() || ''),
+        });
+      }
+    } catch (error) {
+      console.error('Lỗi đăng nhập:', error);
+      alert('Đăng nhập thất bại: ' + error.message);
     }
   };
 

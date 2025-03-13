@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useHistory } from 'react-router-dom';
 import { auth } from '../firebase/config';
 import { Spin } from 'antd';
@@ -10,8 +10,12 @@ export default function AuthProvider({ children }) {
   const history = useHistory();
   const [isLoading, setIsLoading] = useState(true);
 
-  React.useEffect(() => {
-    const unsubscibed = auth.onAuthStateChanged((user) => {
+  // Theo dõi trạng thái xác thực
+  useEffect(() => {
+    console.log('Đang theo dõi trạng thái xác thực...');
+    const unsubscribed = auth.onAuthStateChanged((user) => {
+      console.log('Trạng thái xác thực thay đổi:', user);
+      
       if (user) {
         const { displayName, email, uid, photoURL } = user;
         setUser({
@@ -21,11 +25,18 @@ export default function AuthProvider({ children }) {
           photoURL,
         });
         setIsLoading(false);
-        history.push('/');
+        console.log('Đã đăng nhập, chuyển hướng đến trang chính');
+        
+        // Đảm bảo chuyển hướng đến trang chính
+        setTimeout(() => {
+          history.push('/');
+        }, 100);
+        
         return;
       }
 
       // reset user info
+      console.log('Chưa đăng nhập, chuyển hướng đến trang đăng nhập');
       setUser({});
       setIsLoading(false);
       history.push('/login');
@@ -33,7 +44,7 @@ export default function AuthProvider({ children }) {
 
     // clean function
     return () => {
-      unsubscibed();
+      unsubscribed();
     };
   }, [history]);
 
