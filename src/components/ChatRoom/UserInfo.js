@@ -23,8 +23,7 @@ export default function UserInfo() {
     user: { displayName,  photoURL },
   } = React.useContext(AuthContext);
   const { clearState } = React.useContext(AppContext);
-  console.log('photoURL:', photoURL);
-  console.log('displayName:', displayName);
+  
   return (
     <WrapperStyled>
       <div>
