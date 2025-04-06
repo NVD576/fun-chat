@@ -94,6 +94,7 @@ export default function InviteMemberModal() {
 
     roomRef.update({
       members: [...selectedRoom.members, ...value.map((val) => val.value)],
+      
     });
 
     setIsInviteMemberVisible(false);
