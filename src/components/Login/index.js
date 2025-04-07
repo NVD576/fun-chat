@@ -1,16 +1,8 @@
-import React, { useContext, useEffect, useRef, useState } from "react";
-import { Row, Col, Button, Typography } from 'antd';
-import { auth, googleProvider, fbProvider } from '../../firebase/config';
-import { addDocument, generateKeywords } from '../../firebase/services';
-
-
-
+import React, { useEffect, useRef, useState } from "react";
+import { auth, googleProvider, fbProvider } from "../../firebase/config";
 import styled from "styled-components";
 import { gsap } from "gsap";
 
-
-
-const { Title } = Typography;
 const Container = styled.div`
   background-color: #eff3f4;
   position: relative;
@@ -182,13 +174,13 @@ const PasswordToggle = styled.label`
   }
 `;
 const ForgotPasswordLink = styled.button`
-background: none !important; /* Ghi đè background từ InputGroup */
+  background: none !important; /* Ghi đè background từ InputGroup */
   border: none !important; /* Ghi đè border */
-  color:rgb(148, 179, 192) !important;
+  color: rgb(148, 179, 192) !important;
   text-decoration: underline;
   cursor: pointer;
   font-size: 1em !important;
-  font-family: 'Source Sans Pro', sans-serif;
+  font-family: "Source Sans Pro", sans-serif;
   position: absolute; /* Đặt vị trí tuyệt đối trong InputGroup */
   bottom: -20px; /* Đẩy xuống dưới input */
   right: 0; /* Căn sang phải */
@@ -265,18 +257,33 @@ export default function Login() {
       });
       
       const { additionalUserInfo, user } = result;
+      
+      // Nếu là người dùng mới, gửi thông tin đến API
       if (additionalUserInfo?.isNewUser) {
-        // Nếu là người dùng mới, thêm vào Firestore
-        console.log('Thêm người dùng mới vào Firestore');
-        addDocument('users', {
-          displayName: user.displayName,
-          email: user.email,
-          photoURL: user.photoURL,
-          uid: user.uid,
-          providerId: additionalUserInfo.providerId,
-          keywords: generateKeywords(user.displayName?.toLowerCase() || ''),
-        })
+        console.log('Thêm người dùng mới vào API');
+  
+        // const userData = {
+        //   username: user.displayName.replace(/\s+/g, '_'),
+        //   email: user.email,        
+        //   // avatar: user.photoURL || 'https://via.placeholder.com/150',                                                         
+        // };
+
+        // console.log('Dữ liệu người dùng:', userData);
+        // axios.post('users/', userData)
+        // .then(response => {
+        //   console.log(response);
+        // })
+        // .catch(error => {
+        //   if (error.response) {
+        //     console.log('Error response:', error.response.data); // Xem chi tiết lỗi trả về
+        //   } else if (error.request) {
+        //     console.log('Error request:', error.request);
+        //   } else {
+        //     console.log('Error message:', error.message);
+        //   }
+        // });
       }
+  
     } catch (error) {
       console.error('Lỗi đăng nhập:', error);
       alert('Đăng nhập thất bại: ' + error.message);
@@ -284,30 +291,36 @@ export default function Login() {
   };
   useEffect(() => {
     const initLoginForm = () => {
-      if (!armLRef.current || !armRRef.current || !mouthRef.current || !eyeLRef.current || !eyeRRef.current) {
+      if (
+        !armLRef.current ||
+        !armRRef.current ||
+        !mouthRef.current ||
+        !eyeLRef.current ||
+        !eyeRRef.current
+      ) {
         console.warn("⚠️ Một hoặc nhiều phần tử chưa sẵn sàng.");
         return;
       }
-  
+
       gsap.set(armLRef.current, {
         x: -93,
         y: 220,
         rotation: 105,
         transformOrigin: "top left",
       });
-  
+
       gsap.set(armRRef.current, {
         x: -93,
         y: 220,
         rotation: -105,
         transformOrigin: "top right",
       });
-  
+
       gsap.set(mouthRef.current, { transformOrigin: "center center" });
-  
+
       const startBlinking = (delay) => {
         if (!eyeLRef.current || !eyeRRef.current) return;
-  
+
         gsap.to([eyeLRef.current, eyeRRef.current], {
           delay: delay || 1,
           duration: 0.1,
@@ -318,13 +331,12 @@ export default function Login() {
           onComplete: () => startBlinking(Math.floor(Math.random() * 12)),
         });
       };
-  
+
       startBlinking(5);
     };
-  
+
     initLoginForm();
   }, []);
-  
 
   const calculateFaceMove = () => {
     const svgCoords = svgRef.current.getBoundingClientRect();
@@ -578,28 +590,28 @@ export default function Login() {
     });
   };
 
-//   const handleLogin = async (e) => {
-//     e.preventDefault();
+  //   const handleLogin = async (e) => {
+  //     e.preventDefault();
 
-//     if (!email || !password) {
-//       setError("Email and password are required.");
-//       return;
-//     }
-//     if (!/\S+@\S+\.\S+/.test(email)) {
-//       setError("Invalid email format.");
-//       return;
-//     }
+  //     if (!email || !password) {
+  //       setError("Email and password are required.");
+  //       return;
+  //     }
+  //     if (!/\S+@\S+\.\S+/.test(email)) {
+  //       setError("Invalid email format.");
+  //       return;
+  //     }
 
-//     try {
-//         const userCredential = await signInWithEmailAndPassword(auth, email, password);
-//         console.log("User logged in successfully:");
-//         setUser(userCredential.user);
-//         navigate("/windowchat");
-//     } catch (error) {
-//         console.error("Login error:", error.code, error.message);
-//         setError(error.message);
-//     }
-// };
+  //     try {
+  //         const userCredential = await signInWithEmailAndPassword(auth, email, password);
+  //         console.log("User logged in successfully:");
+  //         setUser(userCredential.user);
+  //         navigate("/windowchat");
+  //     } catch (error) {
+  //         console.error("Login error:", error.code, error.message);
+  //         setError(error.message);
+  //     }
+  // };
   return (
     <Container>
       <Form onSubmit={handleLogin}>
@@ -948,10 +960,7 @@ export default function Login() {
             >
               <img src="https://www.google.com/favicon.ico" alt="Google" />
             </SocialButton>
-            <SocialButton
-              type="button"
-              onClick={() => handleLogin(fbProvider)}
-            >
+            <SocialButton type="button" onClick={() => handleLogin(fbProvider)}>
               <img src="https://www.facebook.com/favicon.ico" alt="Facebook" />
             </SocialButton>
           </SocialButtonContainer>

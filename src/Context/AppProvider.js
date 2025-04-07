@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import useFirestore from '../hooks/useFirestore';
+import React, { useState, useEffect, useCallback } from 'react';
+import axios from '../axios';
 import { AuthContext } from './AuthProvider';
 
 export const AppContext = React.createContext();
@@ -8,35 +8,71 @@ export default function AppProvider({ children }) {
   const [isAddRoomVisible, setIsAddRoomVisible] = useState(false);
   const [isInviteMemberVisible, setIsInviteMemberVisible] = useState(false);
   const [selectedRoomId, setSelectedRoomId] = useState('');
+  const [rooms, setRooms] = useState([]);
+  const [members, setMembers] = useState([]);
+  const [selectedRoom, setSelectedRoom] = useState({});
 
   const {
-    user: { uid },
+    user: { id },
   } = React.useContext(AuthContext);
 
-  const roomsCondition = React.useMemo(() => {
-    return {
-      fieldName: 'members',
-      operator: 'array-contains',
-      compareValue: uid,
-    };
-  }, [uid]);
+  // Hàm fetchRooms để lấy danh sách phòng
+  const fetchRooms = useCallback(async () => {
+    try {
+      const response = await axios.get(`rooms/`);
+      // Lọc các phòng mà người dùng hiện tại là participant
+      const filteredRooms = response.data.filter(room => room.participants.includes(id));
+      setRooms(filteredRooms);
+    } catch (error) {
+      console.error('Lỗi khi gọi API rooms:', error);
+    }
+  }, [id]);
 
-  const rooms = useFirestore('rooms', roomsCondition);
+  useEffect(() => {
+    // Gọi hàm fetchRooms khi id thay đổi
+    fetchRooms();
+  }, [id,fetchRooms]);
 
-  const selectedRoom = React.useMemo(
-    () => rooms.find((room) => room.id === selectedRoomId) || {},
-    [rooms, selectedRoomId]
-  );
+  useEffect(() => {
+    // Lấy thành viên của phòng hiện tại từ API
+    if (selectedRoom.participants && selectedRoom.participants.length > 0) {
+      const fetchMembers = async () => {
+        try {
+          const response = await axios.get(`users/?ids=${selectedRoom.participants.join(',')}`);
+          console.log('Thành viên phòng:', response.data);
+          console.log('selectedRoom:', selectedRoom);
+          console.log('selectedRoom.participants:', selectedRoom.participants);
+          setMembers(response.data);
+        } catch (error) {
+          console.error('Lỗi khi gọi API users:', error);
+        }
+      };
 
-  const usersCondition = React.useMemo(() => {
-    return {
-      fieldName: 'uid',
-      operator: 'in',
-      compareValue: selectedRoom.members,
-    };
-  }, [selectedRoom.members]);
+      fetchMembers();
 
-  const members = useFirestore('users', usersCondition);
+      // Cleanup function to avoid state update after unmount
+      return () => {
+        setMembers([]);  // Reset members on component unmount
+      };
+    }
+  }, [selectedRoom]);
+
+  useEffect(() => {
+    const room = rooms.find((room) => room.id === selectedRoomId);
+  
+    if (room) {
+      if (room.participants.includes(id)) {
+        setSelectedRoom(room);  // OK: user có trong participants
+      } else {
+        console.warn('User không có quyền vào phòng này');
+        setSelectedRoom({});  // Không cho phép
+        setSelectedRoomId(''); // Clear lựa chọn phòng sai
+      }
+    } else {
+      setSelectedRoom({});
+    }
+  }, [rooms, selectedRoomId, id]);
+  
 
   const clearState = () => {
     setSelectedRoomId('');
@@ -56,6 +92,7 @@ export default function AppProvider({ children }) {
         setSelectedRoomId,
         isInviteMemberVisible,
         setIsInviteMemberVisible,
+        fetchRooms,  // Truyền fetchRooms cho các component cần
         clearState,
       }}
     >

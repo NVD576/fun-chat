@@ -11,26 +11,26 @@ const WrapperStyled = styled.div`
   justify-content: space-between;
   padding: 12px 16px;
   border-bottom: 1px solid rgba(82, 38, 83);
-
+  
   .username {
-    color: white;
+    color: orange;
     margin-left: 5px;
   }
 `;
 
 export default function UserInfo() {
   const {
-    user: { displayName,  photoURL },
+    user: { username,  avatar },
   } = React.useContext(AuthContext);
   const { clearState } = React.useContext(AppContext);
   
   return (
     <WrapperStyled>
       <div>
-        <Avatar src={photoURL}>
-          {photoURL ? '' : displayName?.charAt(0).toUpperCase()}
+        <Avatar src={avatar}>
+          {avatar }
         </Avatar>
-        <Typography.Text className='username'>{displayName}</Typography.Text>
+        <Typography.Text className='username'>{username} </Typography.Text>
       </div>
       <Button
         ghost

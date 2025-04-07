@@ -4,10 +4,8 @@ import styled from 'styled-components';
 import { Button, Tooltip, Avatar, Form, Input, Alert, Dropdown, Modal, Menu, message } from 'antd';
 import Message from './Message';
 import { AppContext } from '../../Context/AppProvider';
-import { addDocument } from '../../firebase/services';
 import { AuthContext } from '../../Context/AuthProvider';
-import useFirestore from '../../hooks/useFirestore';
-import { db } from '../../firebase/config';
+import axios from '../../axios';
 
 const HeaderStyled = styled.div`
   display: flex;
@@ -77,10 +75,10 @@ const MessageListStyled = styled.div`
 `;
 
 export default function ChatWindow() {
-  const { selectedRoom, members, setIsInviteMemberVisible, setSelectedRoomId } =
+  const { selectedRoom, members, setIsInviteMemberVisible, setSelectedRoomId, fetchRooms } =
     useContext(AppContext);
   const {
-    user: { uid, photoURL, displayName },
+    user: { username, avatar , id },
   } = useContext(AuthContext);
   const [inputValue, setInputValue] = useState('');
   const [form] = Form.useForm();
@@ -94,35 +92,96 @@ export default function ChatWindow() {
     setInputValue(e.target.value);
   };
 
-  const handleOnSubmit = () => {
-    addDocument('messages', {
-      text: inputValue,
-      uid,
-      photoURL,
-      roomId: selectedRoom.id,
-      displayName,
-    });
+  const handleOnSubmit = async () => {
+    try {
+      // Gửi tin nhắn qua API
+      const response = await axios.post('messages/', {
+        content: inputValue,
+        room: selectedRoom.id,
+        sender:  id,// ID người gửi
 
-    form.resetFields(['message']);
-
-    // focus to input again after submit
-    if (inputRef?.current) {
-      setTimeout(() => {
-        inputRef.current.focus();
       });
+  
+      if (response.status === 201) {
+        message.success('Tin nhắn đã được gửi thành công');
+        const newMessage = {
+          ...response.data,
+          sender: id,
+          username: username,
+        };
+        setMessages((prev) => [...prev, newMessage]);  // Thêm tin nhắn vào danh sách tin nhắn
+      }
+  
+      form.resetFields(['message']); // Reset input field
+  
+      // Focus lại vào input sau khi gửi
+      if (inputRef?.current) {
+        setTimeout(() => {
+          inputRef.current.focus();
+        }, 0);
+      }
+    } catch (error) {
+      message.error('Gửi tin nhắn thất bại: ' + error.message);
     }
   };
+  
 
-  const condition = React.useMemo(
-    () => ({
-      fieldName: 'roomId',
-      operator: '==',
-      compareValue: selectedRoom.id,
-    }),
-    [selectedRoom.id]
-  );
+  // const condition = React.useMemo(
+  //   () => ({
+  //     fieldName: 'roomId',
+  //     operator: '==',
+  //     compareValue: selectedRoom.id,
+  //   }),
+  //   [selectedRoom.id]
+  // );
 
-  const messages = useFirestore('messages', condition);
+  const [messages, setMessages] = useState([]);
+
+  useEffect(() => {
+    const fetchMessages = async () => {
+      try {
+        // Bước 1: Lấy tất cả messages
+        const response = await axios.get('messages/', {
+          params: { roomId: selectedRoom.id },
+          
+        });
+        
+        console.log('Response mess:', response.data);
+        const messageList = response.data;
+  
+        // Bước 2: Lấy danh sách các sender IDs (duy nhất)
+        const senderIds = [...new Set(messageList.map(msg => msg.sender))];
+  
+        // Bước 3: Gọi API để lấy thông tin người dùng
+        const usersResponse = await axios.get(`users/`, {
+          params: { ids: senderIds.join(',') },
+        });
+  
+        // Tạo map từ userId => username
+        const userMap = {};
+        usersResponse.data.forEach(user => {
+          userMap[user.id] = user.username;  // hoặc displayName
+        });
+  
+        // Bước 4: Gắn displayName vào từng message
+        const messagesWithSenderNames = messageList.map(msg => ({
+          ...msg,
+          username: userMap[msg.sender] || 'Unknown',
+          createdAt: msg.timestamp,
+        }));
+        console.log('Messages with sender names:', messagesWithSenderNames);
+        setMessages(messagesWithSenderNames);
+      } catch (error) {
+        message.error('Không thể tải tin nhắn: ' + error.message);
+      }
+    };
+  
+    if (selectedRoom.id) {
+      fetchMessages();
+    }
+  }, [selectedRoom.id]);
+  
+
 
   useEffect(() => {
     // scroll to bottom after message changed
@@ -132,48 +191,56 @@ export default function ChatWindow() {
     }
   }, [messages]);
 
-  const handleRenameRoom = () => {
+  const handleRenameRoom = async () => {
     if (newRoomName.trim() === '') {
       message.error('Tên phòng không được để trống');
       return;
     }
-
+  
     console.log('Đang đổi tên phòng:', selectedRoom.id, 'thành', newRoomName.trim());
-    
-    const roomRef = db.collection('rooms').doc(selectedRoom.id);
-    
-    roomRef.update({
-      name: newRoomName.trim()
-    })
-    .then(() => {
-      console.log('Đổi tên phòng thành công');
-      message.success('Đổi tên phòng thành công');
-      setNewRoomName('');
-      setIsRenameModalVisible(false);
-    })
-    .catch((error) => {
+  
+    try {
+      // Gửi yêu cầu PUT đến API để cập nhật tên phòng
+      const response = await axios.patch(`rooms/${selectedRoom.id}/`, {
+        name: newRoomName.trim(),
+      });
+  
+      if (response.status === 200) {
+        console.log('Đổi tên phòng thành công');
+        message.success('Đổi tên phòng thành công');
+        setNewRoomName('');
+        setIsRenameModalVisible(false);
+              // Cập nhật lại selectedRoom và danh sách phòng
+        setSelectedRoomId(response.data.id);  // Cập nhật selectedRoomId để nó tự động cập nhật selectedRoom
+        fetchRooms();  // Làm mới danh sách phòng
+      }
+    } catch (error) {
       console.error('Lỗi khi đổi tên phòng:', error);
       message.error('Đổi tên phòng thất bại: ' + error.message);
-    });
+    }
   };
+  
 
-  const handleDeleteRoom = () => {
+  const handleDeleteRoom = async () => {
     console.log('Đang xóa phòng:', selectedRoom.id);
-    
-    const roomRef = db.collection('rooms').doc(selectedRoom.id);
-    
-    roomRef.delete()
-    .then(() => {
-      console.log('Xóa phòng thành công');
-      message.success('Xóa phòng thành công');
-      setIsDeleteModalVisible(false);
-      setSelectedRoomId('');
-    })
-    .catch((error) => {
+  
+    try {
+      // Gửi yêu cầu DELETE tới API để xóa phòng
+      const response = await axios.delete(`rooms/${selectedRoom.id}/`);
+  
+      if (response.status === 204) {  // Status 204 nghĩa là thành công và không có nội dung trả về
+        console.log('Xóa phòng thành công');
+        message.success('Xóa phòng thành công');
+        setIsDeleteModalVisible(false);
+        setSelectedRoomId('');
+        fetchRooms();  // Làm mới danh sách phòng
+      }
+    } catch (error) {
       console.error('Lỗi khi xóa phòng:', error);
       message.error('Xóa phòng thất bại: ' + error.message);
-    });
+    }
   };
+  
 
   const handleMenuClick = (e) => {
     if (e.key === '1') {
@@ -220,9 +287,9 @@ export default function ChatWindow() {
               </Button>
               <Avatar.Group size='small' maxCount={2}>
                 {members.map((member) => (
-                  <Tooltip title={member.displayName} key={member.id}>
-                    <Avatar src={member.photoURL}>
-                      {member.photoURL
+                  <Tooltip title={member.username} key={member.id}>
+                    <Avatar src={member.avatar}>
+                      {member.avatar
                         ? ''
                         : member.displayName?.charAt(0)?.toUpperCase()}
                     </Avatar>
@@ -236,9 +303,9 @@ export default function ChatWindow() {
               {messages.map((mes) => (
                 <Message
                   key={mes.id}
-                  text={mes.text}
+                  text={mes.content}
                   photoURL={mes.photoURL}
-                  displayName={mes.displayName}
+                  displayName={mes.username}
                   createdAt={mes.createdAt}
                 />
               ))}

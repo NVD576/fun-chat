@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useHistory } from 'react-router-dom';
 import { auth } from '../firebase/config';
 import { Spin } from 'antd';
+import axios from '../axios';
+
 
 export const AuthContext = React.createContext();
 
@@ -17,20 +19,38 @@ export default function AuthProvider({ children }) {
       console.log('Auth State Changed - Full user object:', user);
       
       if (user) {
-        const { displayName, email, uid, photoURL } = user;
-        console.log('User Info trước khi set:', { displayName, email, uid, photoURL });
+        const { displayName, email,  photoURL } = user;
+        console.log('User Info trước khi set:', { displayName, email,  photoURL });
         
         
         // Đảm bảo photoURL không bị undefined hoặc null
         const userInfo = {
-          displayName,
+          id:0,
+          username:displayName,
           email,
-          uid,
-          photoURL,
+          avatar: photoURL || 'https://via.placeholder.com/150',
         };
         
-        console.log('User Info sau khi xử lý:', userInfo);
-        setUser(userInfo);
+        // Gọi API để lấy thông tin người dùng từ server
+        axios.post('login/', { username: displayName, email })
+          .then((response) => {
+            
+            // Cập nhật userInfo với dữ liệu từ server nếu cần
+            userInfo.id = response.data.id || 0; // Giả sử server trả về id
+            console.log('Response từ server:', userInfo);
+            setUser(userInfo);
+
+          })
+          .catch((error) => {
+            console.error('Lỗi khi gọi API login:', error);
+            console.log('Chưa đăng nhập, chuyển hướng đến trang đăng nhập');
+            setUser({});
+            setIsLoading(false);
+            history.push('/login');
+          });
+
+
+        
         setIsLoading(false);
         console.log('Đã đăng nhập, chuyển hướng đến trang chính');
         
