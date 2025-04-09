@@ -3,6 +3,7 @@ import { gsap } from "gsap";
 import { useHistory } from "react-router-dom";
 import axios from "../../axios";
 import { AuthContext } from "../../Context/AuthProvider";
+import { set } from "lodash";
 
 const Register = () => {
   const formRef = useRef();
@@ -16,7 +17,7 @@ const Register = () => {
   const [message, setMessage] = useState("");
   const history = useHistory();
 
-  const { setUser } = React.useContext(AuthContext);
+  const { setUser , setRe} = React.useContext(AuthContext);
 
   useEffect(() => {
     gsap.from(formRef.current, {
@@ -58,6 +59,7 @@ const Register = () => {
       const data = response.data;
       if (isMounted.current) {
         setUser(data);
+        setRe(true);
         history.push("/");
       }
     } catch (error) {

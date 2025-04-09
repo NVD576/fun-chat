@@ -3,6 +3,7 @@ import { useHistory } from "react-router-dom";
 import { auth } from "../firebase/config";
 import { Spin } from "antd";
 import axios from "../axios";
+import { set } from "lodash";
 
 export const AuthContext = React.createContext();
 
@@ -78,6 +79,7 @@ export default function AuthProvider({ children }) {
         history.push("/");
       })
       .catch((err) => {
+        setRe(false);
         console.error("Lỗi login backend:", err);
         setIsLoading(false);
         history.push("/login");
