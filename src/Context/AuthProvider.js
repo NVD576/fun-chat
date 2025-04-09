@@ -1,83 +1,94 @@
-import React, { useState, useEffect } from 'react';
-import { useHistory } from 'react-router-dom';
-import { auth } from '../firebase/config';
-import { Spin } from 'antd';
-import axios from '../axios';
-
+import React, { useState, useEffect } from "react";
+import { useHistory } from "react-router-dom";
+import { auth } from "../firebase/config";
+import { Spin } from "antd";
+import axios from "../axios";
 
 export const AuthContext = React.createContext();
 
 export default function AuthProvider({ children }) {
-  const [user, setUser] = useState({});
-  const history = useHistory();
+  const [user, setUser] = useState(() => {
+    const savedUser = localStorage.getItem("user");
+    return savedUser ? JSON.parse(savedUser) : {};
+  });
+  const [isLogin, setIsLogin] = useState(() => {
+    return localStorage.getItem("isLogin") === "true";
+  });
+  const [re, setRe] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const history = useHistory();
 
-  // Theo dõi trạng thái xác thực
+  let userInfo = {
+    id: user.id || "",
+    username: user.username || "",
+    email: user.email || "",
+    avatar: user.avatar || "",
+  };
+
   useEffect(() => {
-    console.log('Đang theo dõi trạng thái xác thực...');
-    const unsubscribed = auth.onAuthStateChanged((user) => {
-      console.log('Auth State Changed - Full user object:', user);
-      
-      if (user) {
-        const { displayName, email,  photoURL } = user;
-        console.log('User Info trước khi set:', { displayName, email,  photoURL });
+    
+    // Nếu đã có thông tin đăng nhập trong localStorage
+    if (isLogin && user.email) {
+      setIsLoading(false);
+      return;
+    }
+    console.log("user:", user);
+    const unsubscribe = auth.onAuthStateChanged((firebaseUser) => {
+      if (firebaseUser) {
+        const { displayName, email } = firebaseUser;
+        if (!email) {
+          console.warn("Firebase user không có email.");
+          setIsLoading(false);
+          userInfo.email = email;
+          userInfo.username = displayName;
+          userInfo.password ="123";
+        }
+      }
+    });
+    if(user){
+      userInfo.username = user.username;;
+      userInfo.email = user.email;
+      userInfo.password = user.password;
+    }
+
+
+    // Gọi API để lấy thông tin user từ backend
+    console.log("userInfo:", userInfo);
+    axios
+      .post("login/", {
         
-        
-        // Đảm bảo photoURL không bị undefined hoặc null
+        username: userInfo.username,
+        email: userInfo.email,
+        password: userInfo.password || "123", // Có thể bỏ nếu backend không cần
+      })
+      .then((res) => {
+
         const userInfo = {
-          id:0,
-          username:displayName,
-          email,
-          avatar: photoURL || 'https://via.placeholder.com/150',
+          id: res.data.id,
+          username: res.data.username,
+          email: res.data.email,
+          avatar: res.data.avatar,
         };
         
-        // Gọi API để lấy thông tin người dùng từ server
-        axios.post('login/', { username: displayName, email })
-          .then((response) => {
-            
-            // Cập nhật userInfo với dữ liệu từ server nếu cần
-            userInfo.id = response.data.id || 0; // Giả sử server trả về id
-            console.log('Response từ server:', userInfo);
-            setUser(userInfo);
-
-          })
-          .catch((error) => {
-            console.error('Lỗi khi gọi API login:', error);
-            console.log('Chưa đăng nhập, chuyển hướng đến trang đăng nhập');
-            setUser({});
-            setIsLoading(false);
-            history.push('/login');
-          });
-
-
-        
+        setUser(userInfo);
+        setIsLogin(true);
+        localStorage.setItem("user", JSON.stringify(userInfo));
+        localStorage.setItem("isLogin", "true");
         setIsLoading(false);
-        console.log('Đã đăng nhập, chuyển hướng đến trang chính');
-        
-        // Đảm bảo chuyển hướng đến trang chính
-        setTimeout(() => {
-          history.push('/');
-        }, 100);
-        
-        return;
-      }
+        history.push("/");
+      })
+      .catch((err) => {
+        console.error("Lỗi login backend:", err);
+        setIsLoading(false);
+        history.push("/login");
+      });
 
-      // reset user info
-      console.log('Chưa đăng nhập, chuyển hướng đến trang đăng nhập');
-      setUser({});
-      setIsLoading(false);
-      history.push('/login');
-    });
-
-    // clean function
-    return () => {
-      unsubscribed();
-    };
-  }, [history]);
+    return () => unsubscribe();
+  }, [history,re]);
 
   return (
-    <AuthContext.Provider value={{ user }}>
-      {isLoading ? <Spin style={{ position: 'fixed', inset: 0 }} /> : children}
+    <AuthContext.Provider value={{ user, setUser, setIsLogin,  setRe }}>
+      {isLoading ? <Spin style={{ position: "fixed", inset: 0 }} /> : children}
     </AuthContext.Provider>
   );
 }

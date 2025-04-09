@@ -2,6 +2,9 @@ import React, { useEffect, useRef, useState } from "react";
 import { auth, googleProvider, fbProvider } from "../../firebase/config";
 import styled from "styled-components";
 import { gsap } from "gsap";
+import { useHistory } from 'react-router-dom';
+import { AuthContext } from '../../Context/AuthProvider';
+
 
 const Container = styled.div`
   background-color: #eff3f4;
@@ -217,6 +220,7 @@ const SocialButton = styled.button`
   }
 `;
 export default function Login() {
+  const history = useHistory();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -242,9 +246,13 @@ export default function Login() {
   const earHairRRef = useRef(null);
   const hairRef = useRef(null);
 
+
+
+  const { setUser, setRe } = React.useContext(AuthContext);
+
   let eyeScale = 1;
   let eyesCovered = false;
-  const handleLogin = async (provider) => {
+  const handleLoginGG = async (provider) => {
     try {
       console.log('Bắt đầu đăng nhập với provider:', provider);
       
@@ -255,39 +263,39 @@ export default function Login() {
         photoURL: result.user.photoURL,
         providerId: result.additionalUserInfo.providerId
       });
-      
-      const { additionalUserInfo, user } = result;
-      
-      // Nếu là người dùng mới, gửi thông tin đến API
-      if (additionalUserInfo?.isNewUser) {
-        console.log('Thêm người dùng mới vào API');
-  
-        // const userData = {
-        //   username: user.displayName.replace(/\s+/g, '_'),
-        //   email: user.email,        
-        //   // avatar: user.photoURL || 'https://via.placeholder.com/150',                                                         
-        // };
 
-        // console.log('Dữ liệu người dùng:', userData);
-        // axios.post('users/', userData)
-        // .then(response => {
-        //   console.log(response);
-        // })
-        // .catch(error => {
-        //   if (error.response) {
-        //     console.log('Error response:', error.response.data); // Xem chi tiết lỗi trả về
-        //   } else if (error.request) {
-        //     console.log('Error request:', error.request);
-        //   } else {
-        //     console.log('Error message:', error.message);
-        //   }
-        // });
-      }
   
     } catch (error) {
       console.error('Lỗi đăng nhập:', error);
       alert('Đăng nhập thất bại: ' + error.message);
     }
+  };
+
+    const handleLogin = async (e) => {
+      e.preventDefault();
+
+      if (!email || !password) {
+        alert("Email and password are required.");
+        return;
+      }
+      if (!/\S+@\S+\.\S+/.test(email)) {
+        alert("Invalid email format.");
+        return;
+      }
+
+      try {
+        const userInfo = {
+          email,
+          password,
+        };
+        console.log("Logging in with:", userInfo);
+        setUser(userInfo);
+        setRe(true);
+        // history.push("/login");
+      } catch (error) {
+          console.error("Login error:", error.code, error.message);
+          alert(error.message);
+      }
   };
   useEffect(() => {
     const initLoginForm = () => {
@@ -562,8 +570,12 @@ export default function Login() {
       duration: 1.35,
       ease: "quad.out",
       delay: 0.1,
-      onComplete: () =>
-        gsap.set([armLRef.current, armRRef.current], { visibility: "hidden" }),
+      onComplete: () =>{
+        if(armLRef.current && armRRef.current){
+          gsap.set([armLRef.current, armRRef.current], { visibility: "hidden" });
+        }
+      }
+        
     });
     eyesCovered = false;
   };
@@ -590,28 +602,7 @@ export default function Login() {
     });
   };
 
-  //   const handleLogin = async (e) => {
-  //     e.preventDefault();
 
-  //     if (!email || !password) {
-  //       setError("Email and password are required.");
-  //       return;
-  //     }
-  //     if (!/\S+@\S+\.\S+/.test(email)) {
-  //       setError("Invalid email format.");
-  //       return;
-  //     }
-
-  //     try {
-  //         const userCredential = await signInWithEmailAndPassword(auth, email, password);
-  //         console.log("User logged in successfully:");
-  //         setUser(userCredential.user);
-  //         navigate("/windowchat");
-  //     } catch (error) {
-  //         console.error("Login error:", error.code, error.message);
-  //         setError(error.message);
-  //     }
-  // };
   return (
     <Container>
       <Form onSubmit={handleLogin}>
@@ -924,7 +915,9 @@ export default function Login() {
             id="loginPassword"
             ref={passwordRef}
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={(e) =>{ setPassword(e.target.value);
+              }
+            }
             onFocus={() => {
               resetFace(); // Chỉ đặt lại mặt, không ảnh hưởng đến tay
               if (!eyesCovered) coverEyes(); // Che mắt nếu chưa che
@@ -945,9 +938,9 @@ export default function Login() {
           </PasswordToggle>
           <ForgotPasswordLink
             type="button"
-            onClick={() => console.log("Forgot password clicked")}
+            onClick={()=>history.push("/register")}
           >
-            Forgot password?
+            Register
           </ForgotPasswordLink>
         </InputGroup>
 
@@ -956,11 +949,11 @@ export default function Login() {
           <SocialButtonContainer>
             <SocialButton
               type="button"
-              onClick={() => handleLogin(googleProvider)}
+              onClick={() => handleLoginGG(googleProvider)}
             >
               <img src="https://www.google.com/favicon.ico" alt="Google" />
             </SocialButton>
-            <SocialButton type="button" onClick={() => handleLogin(fbProvider)}>
+            <SocialButton type="button" onClick={() => handleLoginGG(fbProvider)}>
               <img src="https://www.facebook.com/favicon.ico" alt="Facebook" />
             </SocialButton>
           </SocialButtonContainer>

@@ -78,7 +78,7 @@ export default function ChatWindow() {
   const { selectedRoom, members, setIsInviteMemberVisible, setSelectedRoomId, fetchRooms } =
     useContext(AppContext);
   const {
-    user: { username, avatar , id },
+    user: { username, id },
   } = useContext(AuthContext);
   const [inputValue, setInputValue] = useState('');
   const [form] = Form.useForm();
