@@ -28,9 +28,9 @@ export default function UserInfo() {
   const signOut = () => {
     setUser({});
     setIsLogin(false);
+    setRe(false);
     localStorage.removeItem("user");
     localStorage.removeItem("isLogin");
-    setRe(false);
     history.push("/login");
   };
   return (

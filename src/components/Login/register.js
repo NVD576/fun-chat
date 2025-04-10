@@ -33,8 +33,11 @@ const Register = () => {
   }, []);
 
   const handleRegister = async (e) => {
-    e.preventDefault();
 
+    if(!username || !email || !password || !confirmPassword) {
+      if (isMounted.current) setMessage("Vui lòng điền đầy đủ thông tin");
+      return;
+    }
     if (password !== confirmPassword) {
       if (isMounted.current) setMessage("Mật khẩu không khớp");
       return;
@@ -57,10 +60,11 @@ const Register = () => {
       });
 
       const data = response.data;
+      
+      console.log("Đăng ký thành công:", data);
       if (isMounted.current) {
         setUser(data);
         setRe(true);
-        history.push("/");
       }
     } catch (error) {
       console.error("Lỗi khi đăng ký:", error);

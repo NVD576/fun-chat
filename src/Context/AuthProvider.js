@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { useHistory } from "react-router-dom";
-import { auth } from "../firebase/config";
 import { Spin } from "antd";
 import axios from "../axios";
+import { auth} from "../firebase/config";
 import { set } from "lodash";
-
 export const AuthContext = React.createContext();
 
 export default function AuthProvider({ children }) {
@@ -19,74 +18,67 @@ export default function AuthProvider({ children }) {
   const [isLoading, setIsLoading] = useState(true);
   const history = useHistory();
 
-  let userInfo = {
-    id: user.id || "",
-    username: user.username || "",
-    email: user.email || "",
-    avatar: user.avatar || "",
-  };
-
   useEffect(() => {
-    
-    // Nếu đã có thông tin đăng nhập trong localStorage
-    if (isLogin && user.email) {
+    if (!re) {
       setIsLoading(false);
       return;
     }
-    console.log("user:", user);
-    const unsubscribe = auth.onAuthStateChanged((firebaseUser) => {
-      if (firebaseUser) {
-        const { displayName, email } = firebaseUser;
-        if (!email) {
-          console.warn("Firebase user không có email.");
-          setIsLoading(false);
-          userInfo.email = email;
-          userInfo.username = displayName;
-          userInfo.password ="123";
-        }
-      }
-    });
-    if(user){
-      userInfo.username = user.username;;
-      userInfo.email = user.email;
-      userInfo.password = user.password;
-    }
-
-
-    // Gọi API để lấy thông tin user từ backend
-    console.log("userInfo:", userInfo);
-    axios
-      .post("login/", {
-        
-        username: userInfo.username,
-        email: userInfo.email,
-        password: userInfo.password || "123", // Có thể bỏ nếu backend không cần
-      })
-      .then((res) => {
-
-        const userInfo = {
+    console.log("re", re);
+    const handleLogin = async (userInfo) => {
+      try {
+        const res = await axios.post("login/", userInfo);
+  
+        const userData = {
           id: res.data.id,
           username: res.data.username,
           email: res.data.email,
           avatar: res.data.avatar,
         };
-        
-        setUser(userInfo);
+        console.log("userData từ backend:", userData);
+        setUser(userData);
         setIsLogin(true);
-        localStorage.setItem("user", JSON.stringify(userInfo));
+        localStorage.setItem("user", JSON.stringify(userData));
         localStorage.setItem("isLogin", "true");
         setIsLoading(false);
         history.push("/");
-      })
-      .catch((err) => {
-        setRe(false);
+      } catch (err) {
         console.error("Lỗi login backend:", err);
         setIsLoading(false);
+        setUser({});
+        setIsLogin(false);
+        setRe(false);
         history.push("/login");
-      });
-
+      }
+    };
+  
+    // 1. Nếu user đã nhập thủ công (user.password tồn tại)
+    if (user?.email && user?.password) {
+      const userInfo = {
+        email: user.email,
+        username: user.username || "",
+        password: user.password,
+      };
+      console.log("🧑‍💻 userInfo từ đăng nhập thủ công:", userInfo);
+      handleLogin(userInfo);
+      return;
+    }
+  
+    // 2. Nếu đăng nhập bằng Google qua Firebase
+    const unsubscribe = auth.onAuthStateChanged((userK) => {
+      if (userK) {
+        const userInfo = {
+          email: userK.email,
+          username: userK.displayName || "",
+          password: "", // Google không có password
+        };
+        console.log("🌐 userInfo từ Google:", userInfo);
+        handleLogin(userInfo);
+      }
+    });
+  
     return () => unsubscribe();
-  }, [history,re]);
+  }, [re]);
+  
 
   return (
     <AuthContext.Provider value={{ user, setUser, setIsLogin,  setRe }}>

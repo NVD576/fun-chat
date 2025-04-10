@@ -252,19 +252,15 @@ export default function Login() {
 
   let eyeScale = 1;
   let eyesCovered = false;
-  const handleLoginGG = async (provider) => {
-    try {
-      console.log('Bắt đầu đăng nhập với provider:', provider);
-      
-      const result = await auth.signInWithPopup(provider);
-      console.log('Thông tin đăng nhập:', {
-        displayName: result.user.displayName,
-        email: result.user.email,
-        photoURL: result.user.photoURL,
-        providerId: result.additionalUserInfo.providerId
-      });
+
 
   
+  const handleLoginGG = async (provider) => {
+    try {
+      
+      await auth.signInWithPopup(provider);
+
+      setRe(true);
     } catch (error) {
       console.error('Lỗi đăng nhập:', error);
       alert('Đăng nhập thất bại: ' + error.message);

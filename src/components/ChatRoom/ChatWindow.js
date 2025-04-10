@@ -1,11 +1,27 @@
-import { UserAddOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
-import React, { useContext, useEffect, useRef, useState } from 'react';
-import styled from 'styled-components';
-import { Button, Tooltip, Avatar, Form, Input, Alert, Dropdown, Modal, Menu, message } from 'antd';
-import Message from './Message';
-import { AppContext } from '../../Context/AppProvider';
-import { AuthContext } from '../../Context/AuthProvider';
-import axios from '../../axios';
+import {
+  UserAddOutlined,
+  EditOutlined,
+  DeleteOutlined,
+} from "@ant-design/icons";
+import React, { useContext, useEffect, useRef, useState } from "react";
+import styled from "styled-components";
+import {
+  Button,
+  Tooltip,
+  Avatar,
+  Form,
+  Input,
+  Alert,
+  Dropdown,
+  Modal,
+  Menu,
+  message,
+} from "antd";
+import Message from "./Message";
+import { AppContext } from "../../Context/AppProvider";
+import { AuthContext } from "../../Context/AuthProvider";
+import axios from "../../axios";
+import { PaperClipOutlined } from "@ant-design/icons"; // icon đính kèm
 
 const HeaderStyled = styled.div`
   display: flex;
@@ -75,114 +91,133 @@ const MessageListStyled = styled.div`
 `;
 
 export default function ChatWindow() {
-  const { selectedRoom, members, setIsInviteMemberVisible, setSelectedRoomId, fetchRooms } =
-    useContext(AppContext);
+  const {
+    selectedRoom,
+    members,
+    setIsInviteMemberVisible,
+    setSelectedRoomId,
+    fetchRooms,
+  } = useContext(AppContext);
   const {
     user: { username, id },
   } = useContext(AuthContext);
-  const [inputValue, setInputValue] = useState('');
+  const [fileUpload, setFileUpload] = useState(null);
+  const fileInputRef = useRef(null);
+  const [inputValue, setInputValue] = useState("");
   const [form] = Form.useForm();
   const inputRef = useRef(null);
   const messageListRef = useRef(null);
   const [isRenameModalVisible, setIsRenameModalVisible] = useState(false);
-  const [newRoomName, setNewRoomName] = useState('');
+  const [newRoomName, setNewRoomName] = useState("");
   const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
-
+  const [selectedFile, setSelectedFile] = useState(null);
+  
   const handleInputChange = (e) => {
     setInputValue(e.target.value);
   };
-
-  const handleOnSubmit = async () => {
-    try {
-      // Gửi tin nhắn qua API
-      const response = await axios.post('messages/', {
-        content: inputValue,
-        room: selectedRoom.id,
-        sender:  id,// ID người gửi
-
-      });
+  const handleIconClick = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click(); // mở dialog chọn file
+    }
+  };
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    setSelectedFile(file);
+    setFileUpload(file); // thêm dòng này để đảm bảo gửi file hoạt động
+  };
   
+
+  const shortenFileName = (filename) => {
+    const dotIndex = filename.lastIndexOf(".");
+    const name = filename.slice(0, dotIndex);
+    const ext = filename.slice(dotIndex);
+    const shortName = name.slice(0, 5);
+    return `${shortName}${name.length > 5 ? "..." : ""}${ext}`;
+  };
+  
+  const handleOnSubmit = async () => {
+    if (!inputValue && !fileUpload) {
+      message.error("Vui lòng nhập tin nhắn hoặc chọn tệp để gửi.");
+      return;
+    }
+    try {
+      const formData = new FormData();
+      formData.append("content", inputValue);
+      formData.append("room", selectedRoom.id);
+      formData.append("sender", id);
+      if (fileUpload) {
+        formData.append("file", fileUpload);
+      }
+
+      const response = await axios.post("messages/", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
       if (response.status === 201) {
-        message.success('Tin nhắn đã được gửi thành công');
+        message.success("Tin nhắn đã được gửi thành công");
         const newMessage = {
           ...response.data,
           sender: id,
           username: username,
         };
-        setMessages((prev) => [...prev, newMessage]);  // Thêm tin nhắn vào danh sách tin nhắn
+        setMessages((prev) => [...prev, newMessage]);
       }
-  
-      form.resetFields(['message']); // Reset input field
-  
-      // Focus lại vào input sau khi gửi
-      if (inputRef?.current) {
-        setTimeout(() => {
-          inputRef.current.focus();
-        }, 0);
-      }
+      await fetchMessages();
+      form.resetFields(["message"]);
+      setSelectedFile(null);
+      setFileUpload(null); // reset file
+      if (inputRef?.current) inputRef.current.focus();
     } catch (error) {
-      message.error('Gửi tin nhắn thất bại: ' + error.message);
+      message.error("Gửi tin nhắn thất bại: " + error.message);
     }
   };
-  
-
-  // const condition = React.useMemo(
-  //   () => ({
-  //     fieldName: 'roomId',
-  //     operator: '==',
-  //     compareValue: selectedRoom.id,
-  //   }),
-  //   [selectedRoom.id]
-  // );
 
   const [messages, setMessages] = useState([]);
 
-  useEffect(() => {
-    const fetchMessages = async () => {
-      try {
-        // Bước 1: Lấy tất cả messages
-        const response = await axios.get('messages/', {
-          params: { roomId: selectedRoom.id },
-          
-        });
-        
-        console.log('Response mess:', response.data);
-        const messageList = response.data;
+  const fetchMessages = async () => {
+    try {
+      const response = await axios.get("messages/", {
+        params: { roomId: selectedRoom.id },
+      });
   
-        // Bước 2: Lấy danh sách các sender IDs (duy nhất)
-        const senderIds = [...new Set(messageList.map(msg => msg.sender))];
+      const messageList = response.data;
+      const senderIds = [...new Set(messageList.map((msg) => msg.sender))];
   
-        // Bước 3: Gọi API để lấy thông tin người dùng
-        const usersResponse = await axios.get(`users/`, {
-          params: { ids: senderIds.join(',') },
-        });
+      const usersResponse = await axios.get(`users/`, {
+        params: { ids: senderIds.join(",") },
+      });
   
-        // Tạo map từ userId => username
-        const userMap = {};
-        usersResponse.data.forEach(user => {
-          userMap[user.id] = user.username;  // hoặc displayName
-        });
+      const userMap = {};
+      usersResponse.data.forEach((user) => {
+        userMap[user.id] = {
+          username: user.username,
+          photoURL: user.avatar,
+        };
+      });
   
-        // Bước 4: Gắn displayName vào từng message
-        const messagesWithSenderNames = messageList.map(msg => ({
+      const messagesWithSenderNames = messageList.map((msg) => {
+        const sender = userMap[msg.sender] || {};
+        return {
           ...msg,
-          username: userMap[msg.sender] || 'Unknown',
+          username: sender.username || "Unknown",
+          photoURL: sender.photoURL,
           createdAt: msg.timestamp,
-        }));
-        console.log('Messages with sender names:', messagesWithSenderNames);
-        setMessages(messagesWithSenderNames);
-      } catch (error) {
-        message.error('Không thể tải tin nhắn: ' + error.message);
-      }
-    };
+        };
+      });
   
+      setMessages(messagesWithSenderNames);
+    } catch (error) {
+      message.error("Không thể tải tin nhắn: " + error.message);
+    }
+  };
+  useEffect(() => {
     if (selectedRoom.id) {
       fetchMessages();
     }
   }, [selectedRoom.id]);
   
-
-
   useEffect(() => {
     // scroll to bottom after message changed
     if (messageListRef?.current) {
@@ -192,61 +227,65 @@ export default function ChatWindow() {
   }, [messages]);
 
   const handleRenameRoom = async () => {
-    if (newRoomName.trim() === '') {
-      message.error('Tên phòng không được để trống');
+    if (newRoomName.trim() === "") {
+      message.error("Tên phòng không được để trống");
       return;
     }
-  
-    console.log('Đang đổi tên phòng:', selectedRoom.id, 'thành', newRoomName.trim());
-  
+
+    console.log(
+      "Đang đổi tên phòng:",
+      selectedRoom.id,
+      "thành",
+      newRoomName.trim()
+    );
+
     try {
       // Gửi yêu cầu PUT đến API để cập nhật tên phòng
       const response = await axios.patch(`rooms/${selectedRoom.id}/`, {
         name: newRoomName.trim(),
       });
-  
+
       if (response.status === 200) {
-        console.log('Đổi tên phòng thành công');
-        message.success('Đổi tên phòng thành công');
-        setNewRoomName('');
+        console.log("Đổi tên phòng thành công");
+        message.success("Đổi tên phòng thành công");
+        setNewRoomName("");
         setIsRenameModalVisible(false);
-              // Cập nhật lại selectedRoom và danh sách phòng
-        setSelectedRoomId(response.data.id);  // Cập nhật selectedRoomId để nó tự động cập nhật selectedRoom
-        fetchRooms();  // Làm mới danh sách phòng
+        // Cập nhật lại selectedRoom và danh sách phòng
+        setSelectedRoomId(response.data.id); // Cập nhật selectedRoomId để nó tự động cập nhật selectedRoom
+        fetchRooms(); // Làm mới danh sách phòng
       }
     } catch (error) {
-      console.error('Lỗi khi đổi tên phòng:', error);
-      message.error('Đổi tên phòng thất bại: ' + error.message);
+      console.error("Lỗi khi đổi tên phòng:", error);
+      message.error("Đổi tên phòng thất bại: " + error.message);
     }
   };
-  
 
   const handleDeleteRoom = async () => {
-    console.log('Đang xóa phòng:', selectedRoom.id);
-  
+    console.log("Đang xóa phòng:", selectedRoom.id);
+
     try {
       // Gửi yêu cầu DELETE tới API để xóa phòng
       const response = await axios.delete(`rooms/${selectedRoom.id}/`);
-  
-      if (response.status === 204) {  // Status 204 nghĩa là thành công và không có nội dung trả về
-        console.log('Xóa phòng thành công');
-        message.success('Xóa phòng thành công');
+
+      if (response.status === 204) {
+        // Status 204 nghĩa là thành công và không có nội dung trả về
+        console.log("Xóa phòng thành công");
+        message.success("Xóa phòng thành công");
         setIsDeleteModalVisible(false);
-        setSelectedRoomId('');
-        fetchRooms();  // Làm mới danh sách phòng
+        setSelectedRoomId("");
+        fetchRooms(); // Làm mới danh sách phòng
       }
     } catch (error) {
-      console.error('Lỗi khi xóa phòng:', error);
-      message.error('Xóa phòng thất bại: ' + error.message);
+      console.error("Lỗi khi xóa phòng:", error);
+      message.error("Xóa phòng thất bại: " + error.message);
     }
   };
-  
 
   const handleMenuClick = (e) => {
-    if (e.key === '1') {
+    if (e.key === "1") {
       setNewRoomName(selectedRoom.name);
       setIsRenameModalVisible(true);
-    } else if (e.key === '2') {
+    } else if (e.key === "2") {
       setIsDeleteModalVisible(true);
     }
   };
@@ -267,32 +306,32 @@ export default function ChatWindow() {
       {selectedRoom.id ? (
         <>
           <HeaderStyled>
-            <div className='header__info'>
-              <Dropdown overlay={menu} trigger={['click']}>
-                <Button type="text" className='header__title' style={{ padding: 0, margin: 0, height: 'auto' }}>
+            <div className="header__info">
+              <Dropdown overlay={menu} trigger={["click"]}>
+                <Button
+                  type="text"
+                  className="header__title"
+                  style={{ padding: 0, margin: 0, height: "auto" }}
+                >
                   {selectedRoom.name}
                 </Button>
               </Dropdown>
-              <span className='header__description'>
+              <span className="header__description">
                 {selectedRoom.description}
               </span>
             </div>
             <ButtonGroupStyled>
               <Button
                 icon={<UserAddOutlined />}
-                type='text'
+                type="text"
                 onClick={() => setIsInviteMemberVisible(true)}
               >
                 Mời
               </Button>
-              <Avatar.Group size='small' maxCount={2}>
+              <Avatar.Group size="small" maxCount={2}>
                 {members.map((member) => (
                   <Tooltip title={member.username} key={member.id}>
-                    <Avatar src={member.avatar}>
-                      {member.avatar
-                        ? ''
-                        : member.displayName?.charAt(0)?.toUpperCase()}
-                    </Avatar>
+                    <Avatar src={member.avatar}>{member.avatar}</Avatar>
                   </Tooltip>
                 ))}
               </Avatar.Group>
@@ -307,21 +346,43 @@ export default function ChatWindow() {
                   photoURL={mes.photoURL}
                   displayName={mes.username}
                   createdAt={mes.createdAt}
+                  image={mes.image}
+                  file={mes.file}
                 />
               ))}
             </MessageListStyled>
             <FormStyled form={form}>
-              <Form.Item name='message'>
+              <Form.Item name="message">
                 <Input
                   ref={inputRef}
                   onChange={handleInputChange}
                   onPressEnter={handleOnSubmit}
-                  placeholder='Nhập tin nhắn...'
+                  placeholder="Nhập tin nhắn..."
                   bordered={false}
-                  autoComplete='off'
+                  autoComplete="off"
                 />
               </Form.Item>
-              <Button type='primary' onClick={handleOnSubmit}>
+              {/* Icon chọn file */}
+              <Tooltip title="Đính kèm tệp">
+                <PaperClipOutlined
+                  style={{ fontSize: 20, cursor: "pointer", marginRight: 8 }}
+                  onClick={handleIconClick}
+                />
+              </Tooltip>
+              {selectedFile && (
+                <span style={{ marginRight: 8, fontSize: 12, color: "#888" }}>
+                  {shortenFileName(selectedFile.name)}
+                </span>
+              )}
+              {/* Input file ẩn đi */}
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileChange}
+                style={{ display: "none" }}
+              />
+
+              <Button type="primary" onClick={handleOnSubmit}>
                 Gửi
               </Button>
             </FormStyled>
@@ -354,8 +415,8 @@ export default function ChatWindow() {
         </>
       ) : (
         <Alert
-          message='Hãy chọn phòng'
-          type='info'
+          message="Hãy chọn phòng"
+          type="info"
           showIcon
           style={{ margin: 5 }}
           closable
