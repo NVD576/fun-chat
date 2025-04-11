@@ -1,18 +1,18 @@
 import firebase from 'firebase/app';
-
 import 'firebase/analytics';
 import 'firebase/auth';
 import 'firebase/firestore';
+import 'dotenv/config'
 
 var firebaseConfig = {
-  apiKey: "AIzaSyBFbqhHX4lsle__TSdmgFTzfGGiWG79QlA",
-  authDomain: "login-53f05.firebaseapp.com",
-  databaseURL: "https://login-53f05-default-rtdb.firebaseio.com",
-  projectId: "login-53f05",
-  storageBucket: "login-53f05.firebasestorage.app",
-  messagingSenderId: "414312040508",
-  appId: "1:414312040508:web:31b34a07356365c9f75b39",
-  measurementId: "G-8192YN2ND7"
+  apiKey: process.env.REACT_APP_API_KEY,
+  authDomain: process.env.REACT_APP_AUTH_DOMAIN,
+  databaseURL: process.env.REACT_APP_DATABASE_URL,
+  projectId: process.env.REACT_APP_PROJECT_ID,
+  storageBucket: process.env.REACT_APP_STORAGE_BUCKET,
+  messagingSenderId: process.env.REACT_APP_MESSAGING_SENDER_ID,
+  appId: process.env.REACT_APP_APP_ID,
+  measurementId: process.env.REACT_APP_MEASUREMENT_ID
 };
 //https://login-53f05.firebaseapp.com/__/auth/handler
 // Initialize Firebase
