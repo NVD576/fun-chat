@@ -2,6 +2,7 @@ import React from "react";
 import { Avatar, Typography } from "antd";
 import { formatRelative } from "date-fns/esm";
 import { WrapperStyled } from "./messStyle";
+import { FilePdfOutlined, FileWordOutlined, FileExcelOutlined, FileImageOutlined, FileOutlined } from '@ant-design/icons';
 
 function formatDate(seconds) {
   let formattedDate = "";
@@ -15,6 +16,27 @@ function formatDate(seconds) {
   return formattedDate;
 }
 
+const getFileIcon = (fileName) => {
+  const extension = fileName.split('.').pop().toLowerCase();
+  switch (extension) {
+    case 'pdf':
+      return <FilePdfOutlined style={{ fontSize: '20px', color: '#ff4d4f' }} />;
+    case 'doc':
+    case 'docx':
+      return <FileWordOutlined style={{ fontSize: '20px', color: '#096dd9' }} />;
+    case 'xls':
+    case 'xlsx':
+      return <FileExcelOutlined style={{ fontSize: '20px', color: '#52c41a' }} />;
+    case 'jpg':
+    case 'jpeg':
+    case 'png':
+    case 'gif':
+      return <FileImageOutlined style={{ fontSize: '20px', color: '#faad14' }} />;
+    default:
+      return <FileOutlined style={{ fontSize: '20px', color: '#722ed1' }} />;
+  }
+};
+
 export default function Message({
   text,
   displayName,
@@ -22,9 +44,10 @@ export default function Message({
   photoURL,
   image,
   file,
+  isOwn
 }) {
   return (
-    <WrapperStyled>
+    <WrapperStyled isOwn={isOwn}>
       <div>
         <Avatar size="small" src={photoURL}>
           {photoURL ? "" : displayName?.charAt(0)?.toUpperCase()}
@@ -67,7 +90,9 @@ export default function Message({
             <div className="file-wrapper">
               <a href={file} target="_blank" rel="noopener noreferrer" download>
                 <div className="file-box">
-                  <span className="file-icon">📎</span>
+                  <div className="file-icon" style={{ opacity: 1 }}>
+                    {getFileIcon(file.split("/").pop())}
+                  </div>
                   <span className="file-name">{file.split("/").pop()}</span>
                   <span className="download-text">Tải xuống</span>
                 </div>

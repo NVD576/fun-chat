@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom';
 import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
+// hoặc './App.css' nếu bạn dùng Tailwind ở đó
 
 ReactDOM.render(<App />, document.getElementById('root'));
 

@@ -21,6 +21,7 @@ export default function AuthProvider({ children }) {
   useEffect(() => {
     if (!re) {
       setIsLoading(false);
+      history.push("/login");
       return;
     }
     console.log("re", re);

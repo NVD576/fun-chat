@@ -348,6 +348,7 @@ export default function ChatWindow() {
                   createdAt={mes.createdAt}
                   image={mes.image}
                   file={mes.file}
+                  isOwn={mes.sender === id}
                 />
               ))}
             </MessageListStyled>
